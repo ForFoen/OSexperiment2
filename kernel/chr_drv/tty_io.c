@@ -347,3 +347,41 @@ void do_tty_interrupt(int tty)
 void chr_dev_init(void)
 {
 }
+
+static unsigned char mouse_input_count = 0; //用来记录是鼠标输入的第几个字节的全局变量
+static unsigned char mouse_left_down; //用来记录鼠标左键是否按下
+static unsigned char mouse_right_down; //用来记录鼠标右键是否按下
+static unsigned char mouse_left_move; //用来记录鼠标是否向左移动
+static unsigned char mouse_right_move;//用来记录鼠标是否向右移动
+...
+static int mouse_x_position; //用来记录鼠标的 x 轴位置
+static int mouse_y_position;//用来记录鼠标的 y 轴位置
+void readmouse(int mousecode)
+{
+	if(mousecode==0xFA || mouse_input_count>=4 )
+	{
+	//0xFA 是 i8042 鼠标命令的成功响应的 ACK 字节
+		mouse_input_count=1;
+		return 0;
+	}
+	switch(mouse_input_count)
+	{
+		case 1:
+			mouse_left_down=(mousecode &0x01) ==0x01;
+			mouse_right_down=(mousecode &0x02)==0x02;
+			mouse_left_move=(mousecode & 0x10)==0x10;
+			...
+			mouse_input_count++;
+			break;
+		case 2:
+		//处理第二个字节，计算鼠标在 X 轴上的位置
+			if(mouse_left_move) mouse_x_position +=(int)(0xFFFFFF00|mousecode);
+			//此时mousecode 是一个 8 位负数的补码表示，要将其变成 32 位就需要在前面填充 1
+			...
+			if(mouse_x_position<0) mouse_x_position=0;
+			break;
+		case 3:
+		//处理第3个字节，计算鼠标在 Y 轴上的位置
+			...
+	}
+}
