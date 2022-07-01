@@ -61,7 +61,11 @@ extern struct tty_struct tty_table[];
 	eol2=\0
 */
 #define INIT_C_CC "\003\034\177\025\004\0\1\0\021\023\032\0\022\017\027\026\0"
-
+typedef struct MESS{
+	int mid; //消息的ID
+	int pid; //消息的目标进程ID，如果是当前进程，该值可设为-1
+	struct MESS *next; //形成消息队列要用的信息
+}message;
 void rs_init(void);
 void con_init(void);
 void tty_init(void);
@@ -73,5 +77,6 @@ void rs_write(struct tty_struct * tty);
 void con_write(struct tty_struct * tty);
 
 void copy_to_cooked(struct tty_struct * tty);
+extern int volatile mouse_msg;
 
 #endif
