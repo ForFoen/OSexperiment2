@@ -5,14 +5,14 @@
  */
 
 #include <errno.h>
-
+#include <asm/io.h>
 #include <linux/sched.h>
 #include <linux/tty.h>
 #include <linux/kernel.h>
 #include <asm/segment.h>
 #include <sys/times.h>
 #include <sys/utsname.h>
-
+int volatile mouse_msg;
 int sys_ftime()
 {
 	return -ENOSYS;
@@ -289,4 +289,65 @@ int sys_umask(int mask)
 
 	current->umask = mask & 0777;
 	return (old);
+}
+static int is_set=0;
+#define vga_graph_memstart 0xA0000
+#define vga_graph_memsize 64000
+#define cursor_side 6
+#define vga_width 320
+#define vga_height 200
+int sys_init_graphics()
+{
+	int i,j,x,y;
+	char *p=vga_graph_memstart;
+	if(is_set==0)
+	{
+		outb(0x05,0x3CE);
+		outb(0x40,0x3CF);//设置256色，且取出方式为移动拼装
+		outb(0x06,0x3CE);
+		outb(0x05,0x3CF);//设置显存的地址区域，禁止字符模式
+		outb(0x04,0x3C4);
+		outb(0x08,0x3C5);//设定将四个显存片连在一起
+
+
+		outb(0x01,0x3D4);
+		outb(0x4F,0x3D5);//设置End Horizontal Display 为79
+		outb(0x03,0x3D4);
+		outb(0x82,0x3D5);//设置Display Enable Skew 为0
+
+		outb(0x07,0x3D4);
+		outb(0x1F,0x3D5);//设置Vertical Display End 第8、9位为1、0
+		outb(0x12,0x3D4);
+		outb(0x8F,0x3D5);//设置Vertical Display End 低7位为0x8F
+		outb(0x17,0x3D4);
+		outb(0xA3,0x3D5);//设置SLDIV=1，将Scanline clock除以2
+
+		outb(0x14,0x3D4);
+		outb(0x40,0x3D5);//设置DW=1
+		outb(0x13,0x3D4);
+		outb(0x28,0x3D5);//设置Offset=40
+
+		outb(0x0C,0x3D4);//设置Start Address高八位
+		outb(0x00,0x3D5);//
+		outb(0x0D,0x3D4);//设置Start Address低八位
+		outb(0x00,0x3D5);//将Start Address设置为0xA0000
+		is_set=1;
+	}
+	//绘制鼠标的核心代码
+	for(i=0;i<vga_graph_memsize;i++) *p++=3;//将背景颜色设为蓝绿色
+	x=75;
+	y=100;
+	for(i=x-cursor_side;i<=x+cursor_side;i++){
+		for(j=y-cursor_side;j<=y+cursor_side;j++){
+			p=(char *)vga_graph_memstart+j*vga_width+i;
+			*p=12;
+		}
+	}
+	return 0;
+}
+
+int sys_get_message()
+{
+	if(mouse_msg>0) mouse_msg--;
+	return mouse_msg;
 }
