@@ -347,21 +347,28 @@ void do_tty_interrupt(int tty)
 void chr_dev_init(void)
 {
 }
+
+int volatile mouse_msg;
+void post_message()
+{
+	cli();
+	//防止鼠标移动导致疯狂中断,jumpp起飞
+	if(mouse_msg<=10)
+		mouse_msg++;
+	sti();
+}
 //二维鼠标
-static unsigned char mouse_input_count = 0; //用来记录是鼠标输入的第几个字节的全局变量
+static unsigned char mouse_input_count = 1; //用来记录是鼠标输入的第几个字节的全局变量
 static unsigned char mouse_left_down; //用来记录鼠标左键是否按下
 static unsigned char mouse_right_down; //用来记录鼠标右键是否按下
 static unsigned char mouse_left_move; //用来记录鼠标是否向左移动
 static unsigned char mouse_down_move;//用来记录鼠标是否向下移动
 
-static int mouse_x_position; //用来记录鼠标的 x 轴位置
-static int mouse_y_position;//用来记录鼠标的 y 轴位置
+int mouse_x_position=50; //用来记录鼠标的 x 轴位置
+int mouse_y_position=50;//用来记录鼠标的 y 轴位置
 //可随机设置一个数值，鼠标是靠相对位置工作的设备
-
-
-void readmouse(int mousecode)
-{
-
+void readmouse(unsigned int mousecode)
+{	
 	if(mousecode==0xFA)
 	{
 	//0xFA 是 i8042 鼠标命令的成功响应的 ACK 字节
@@ -376,6 +383,7 @@ void readmouse(int mousecode)
 			mouse_left_move=(mousecode & 0x10)==0x10;
 			mouse_down_move=(mousecode & 0x20)==0x20;
 			mouse_input_count++;
+
 			break;
 		case 2:
 		//处理第二个字节，计算鼠标在 X 轴上的位置
@@ -390,6 +398,10 @@ void readmouse(int mousecode)
 			if(mouse_down_move) mouse_y_position +=(int)(0xFFFFFF00|mousecode);
 			if(mouse_y_position>200) mouse_y_position=200;
 			if(mouse_y_position<0) mouse_y_position=0;
+			break;
+		default:
+		//二维鼠标不处理第4个字节
+			mouse_input_count=1;
 			break;
 	}
 }
