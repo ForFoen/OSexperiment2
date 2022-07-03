@@ -12,7 +12,7 @@
 #include <asm/segment.h>
 #include <sys/times.h>
 #include <sys/utsname.h>
-int volatile mouse_msg;
+
 int sys_ftime()
 {
 	return -ENOSYS;
@@ -290,18 +290,13 @@ int sys_umask(int mask)
 	current->umask = mask & 0777;
 	return (old);
 }
+
 static int is_set=0;
-#define vga_graph_memstart 0xA0000
-#define vga_graph_memsize 64000
-#define cursor_side 6
-#define vga_width 320
-#define vga_height 200
-int sys_init_graphics()
+int sys_init_graphics(int color)
 {
-	int i,j,x,y;
+	int i;
 	char *p=vga_graph_memstart;
-	if(is_set==0)
-	{
+	if(!is_set){
 		outb(0x05,0x3CE);
 		outb(0x40,0x3CF);//设置256色，且取出方式为移动拼装
 		outb(0x06,0x3CE);
@@ -333,21 +328,53 @@ int sys_init_graphics()
 		outb(0x00,0x3D5);//将Start Address设置为0xA0000
 		is_set=1;
 	}
-	//绘制鼠标的核心代码
-	for(i=0;i<vga_graph_memsize;i++) *p++=3;//将背景颜色设为蓝绿色
-	x=75;
-	y=100;
-	for(i=x-cursor_side;i<=x+cursor_side;i++){
-		for(j=y-cursor_side;j<=y+cursor_side;j++){
-			p=(char *)vga_graph_memstart+j*vga_width+i;
-			*p=12;
-		}
-	}
+	
+	for(i=0;i<vga_graph_memsize;i++) *p++=color;//将背景颜色设为蓝绿色
+	
 	return 0;
 }
 
-int sys_get_message()
+message *message_head=NULL;
+message *message_tail=NULL;
+int sys_get_message(message *msg)
 {
-	if(mouse_msg>0) mouse_msg--;
-	return mouse_msg;
+	if(!message_head){ 
+		msg->mid=-1;
+		return 1;
+	}
+	message *m=message_head;
+	message_head=message_head->next;
+	msg->mid=m->mid;
+	msg->pid=m->pid;
+	msg->next=NULL;
+	free(m);
+	return 1;
+}
+user_timer *timer_head=NULL;
+int sys_timer_create(long milliseconds,int type)
+{
+	long jiffies = milliseconds / 10;//Linux时钟是每个jiffies（滴答）（10毫秒）中断一次
+	user_timer *timer = (user_timer*)malloc(sizeof(user_timer));
+	timer->init_jiffies=jiffies;
+	timer->jiffies=jiffies;
+	timer->next=timer_head;
+	timer->type=type;
+	timer->pid=-1;
+	timer_head=timer;
+	return 1;
+}
+
+int sys_paint(object *ob){
+	int i,j;
+	int x=ob->posx+ob->width;
+	int y=ob->posy+ob->height;
+	int color=ob->color;
+	char *p;
+	for(i=ob->posx;i<=x;i++){
+		for(j=ob->posy;j<=y;j++){
+			p=(char *)vga_graph_memstart+j*vga_width+i;
+			*p=color;
+		}
+	}
+	return 1;
 }
