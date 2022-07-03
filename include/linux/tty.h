@@ -82,7 +82,7 @@ void copy_to_cooked(struct tty_struct * tty);
 #define vga_width 320
 #define vga_height 200
 typedef struct MESS{
-	int mid; //消息的ID
+	unsigned char mid; //消息的ID
 	int pid; //消息的目标进程ID，如果是当前进程，该值可设为-1
 	struct MESS *next; //形成消息队列要用的信息
 }message;
@@ -96,11 +96,11 @@ typedef struct usertimer{
 }user_timer;
 
 typedef struct OB{
-    int posx;//对象左上角的x坐标
-    int posy;//对象左上角的y坐标
-    int width;//对象的宽度
-    int height;//对象的高度
-	int color;//对象的颜色
+    unsigned char posx;//对象左上角的x坐标
+    unsigned char posy;//对象左上角的y坐标
+    unsigned char width;//对象的宽度
+    unsigned char height;//对象的高度
+	unsigned char color;//对象的颜色
 }object;
 
 extern void post_message(message *msg);
