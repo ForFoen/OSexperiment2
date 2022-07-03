@@ -336,17 +336,15 @@ int sys_init_graphics(int color)
 
 message *message_head=NULL;
 message *message_tail=NULL;
-int sys_get_message(message *msg)
+int sys_get_message(unsigned char *msg)
 {
 	if(!message_head){ 
-		msg->mid=-1;
+		put_fs_byte(0,msg);
 		return 1;
 	}
 	message *m=message_head;
 	message_head=message_head->next;
-	msg->mid=m->mid;
-	msg->pid=m->pid;
-	msg->next=NULL;
+	put_fs_byte(m->mid,msg);
 	free(m);
 	return 1;
 }
@@ -364,14 +362,18 @@ int sys_timer_create(long milliseconds,int type)
 	return 1;
 }
 
-int sys_paint(object *ob){
-	int i,j;
-	int x=ob->posx+ob->width;
-	int y=ob->posy+ob->height;
-	int color=ob->color;
+int sys_paint(unsigned char *ob){
+	int i,j,x,y,w,h,color;
+	x=get_fs_byte(ob);
+	y=get_fs_byte(ob+1);
+	w=get_fs_byte(ob+2);
+	h=get_fs_byte(ob+3);
+	color=get_fs_byte(ob+4);
+	w+=x;
+	h+=y;
 	char *p;
-	for(i=ob->posx;i<=x;i++){
-		for(j=ob->posy;j<=y;j++){
+	for(i=x;i<=w;i++){
+		for(j=y;j<=h;j++){
 			p=(char *)vga_graph_memstart+j*vga_width+i;
 			*p=color;
 		}
