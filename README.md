@@ -13,3 +13,5 @@
 
 4.可视化应用程序的设计与实现:添加了两个系统调用sys_timer_create()和sys_paint()，分别用于记录并传输时间信息和改变显示图像，主要代码位于kernel/sys.c、game.c、kernel/sched.c。
 （宏与结构的定义位于include/linux/tty.h）
+
+最终将game.c放入虚拟机中编译并运行，启动程序，将虚拟机左上角鼠标按钮解锁，即可进行游戏。
