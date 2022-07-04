@@ -20,10 +20,11 @@
 #define BIRD_HEIGHT 8
 #define BIRD_COLOR 6
 #define BIRD_UP_SPEED 6
-#define BIRD_FALL_SPEED 4
+#define BIRD_FALL_SPEED 1
 
-#define OBJECT_WIDTH 15
-#define OBJECT_HEIGHT 40
+#define OBJECT_NUM 10
+#define OBJECT_WIDTH 10
+#define OBJECT_HEIGHT 30
 #define OBJECT_COLOR 12
 #define OBJECT_POSX_L 50
 #define OBJECT_POSX_R 150 
@@ -59,7 +60,7 @@ _syscall1(int,paint,unsigned char*,ob)
 int Rand(int x,int y){
     int t;
     t=time(NULL);
-    return x+t%y;
+    return x+(((t<<5)%y)*314)%y;
 }
 void forpaint(object ob){
     unsigned char *c=(unsigned char *)malloc(sizeof(object));
@@ -72,7 +73,7 @@ void forpaint(object ob){
     free(c);
 }
 int main(){
-    object objects[20];
+    object objects[OBJECT_NUM];
     unsigned char *c;
     int i;
     objects[0].posx=BIRD_X;
@@ -81,15 +82,15 @@ int main(){
     objects[0].height=BIRD_HEIGHT;
     objects[0].color=BIRD_COLOR;
 
-    for(i=1;i<20;i++){
+    for(i=1;i<OBJECT_NUM;i++){
         objects[i].height=OBJECT_HEIGHT;
         objects[i].width=OBJECT_WIDTH;
         objects[i].posx=OBJECT_POSX_L+30*i;
-        objects[i].posy=(i%2)?OBJECT_POSY_R:OBJECT_POSY_L;
+        objects[i].posy=(i%2)?((objects[i].posx*i)%OBJECT_POSX_R):OBJECT_POSY_L;
         objects[i].color=OBJECT_COLOR;
     }
     init_graphics(SCREEN_COLOR);
-    for(i=0;i<20;i++){
+    for(i=0;i<OBJECT_NUM;i++){
         forpaint(objects[i]);
     }
     timer_create(100,0);
@@ -109,7 +110,7 @@ int main(){
             objects[0].posy+=BIRD_FALL_SPEED;
             objects[0].color=BIRD_COLOR;
             forpaint(objects[0]);
-            for(i=1;i<20;i++){
+            for(i=1;i<OBJECT_NUM;i++){
                 objects[i].color=SCREEN_COLOR;
                 forpaint(objects[i]);
                 objects[i].posx-=OBJECT_SPEED;
