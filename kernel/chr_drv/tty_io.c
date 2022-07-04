@@ -347,24 +347,44 @@ void do_tty_interrupt(int tty)
 void chr_dev_init(void)
 {
 }
+
+extern message *message_head;
+extern message *message_tail;
+void post_message(message *msg)
+{
+	cli();//关中断
+	if(!message_head){
+		message_head=msg;
+		message_tail=msg;
+		message_head->next=NULL;
+		sti();//开中断
+		return;
+	}
+	else if(message_head==message_tail){
+		message_tail=msg;
+		message_head->next=message_tail;
+		sti();//开中断
+		return;
+	}
+	message_tail->next=msg;
+	message_tail=msg;
+	sti();//开中断
+}
 //二维鼠标
-static unsigned char mouse_input_count = 0; //用来记录是鼠标输入的第几个字节的全局变量
+static unsigned char mouse_input_count = 1; //用来记录是鼠标输入的第几个字节的全局变量
 static unsigned char mouse_left_down; //用来记录鼠标左键是否按下
 static unsigned char mouse_right_down; //用来记录鼠标右键是否按下
 static unsigned char mouse_left_move; //用来记录鼠标是否向左移动
 static unsigned char mouse_down_move;//用来记录鼠标是否向下移动
 
-static int mouse_x_position; //用来记录鼠标的 x 轴位置
-static int mouse_y_position;//用来记录鼠标的 y 轴位置
+int mouse_x_position=50; //用来记录鼠标的 x 轴位置
+int mouse_y_position=50;//用来记录鼠标的 y 轴位置
 //可随机设置一个数值，鼠标是靠相对位置工作的设备
-
-
-void readmouse(int mousecode)
-{
-
+void readmouse(unsigned int mousecode)
+{	
 	if(mousecode==0xFA)
 	{
-	//0xFA 是 i8042 鼠标命令的成功响应的 ACK 字节
+	//0xFA 是 i8042 鼠标命令的成功响应的 ACK 字节,在系统初始化鼠标复位时会返回四次，分别是250,170,0,250
 		mouse_input_count=1;
 		return 0;
 	}
@@ -376,20 +396,27 @@ void readmouse(int mousecode)
 			mouse_left_move=(mousecode & 0x10)==0x10;
 			mouse_down_move=(mousecode & 0x20)==0x20;
 			mouse_input_count++;
+			if(mouse_left_down){
+				message *msg=(message*)malloc(sizeof(message));
+				msg->mid=MSG_MOUSE_CLICK;
+				msg->pid=-1;
+				post_message(msg);
+			}
 			break;
 		case 2:
 		//处理第二个字节，计算鼠标在 X 轴上的位置
-			if(mouse_left_move) mouse_x_position +=(int)(0xFFFFFF00|mousecode);
+			mouse_x_position +=(mouse_left_move)?(int)(0xFFFFFF00|mousecode):(int)(mousecode);
 			//此时mousecode 是一个 8 位负数的补码表示，要将其变成 32 位就需要在前面填充 1
-			if(mouse_x_position>100) mouse_x_position=100;
+			if(mouse_x_position>150) mouse_x_position=150;
 			if(mouse_x_position<0) mouse_x_position=0;
 			mouse_input_count++;
 			break;
 		case 3:
 		//处理第3个字节，计算鼠标在 Y 轴上的位置
-			if(mouse_down_move) mouse_y_position +=(int)(0xFFFFFF00|mousecode);
+			mouse_y_position +=(mouse_down_move)?(int)(0xFFFFFF00|mousecode):(int)(mousecode);
 			if(mouse_y_position>200) mouse_y_position=200;
 			if(mouse_y_position<0) mouse_y_position=0;
+			mouse_input_count=1;
 			break;
 	}
 }

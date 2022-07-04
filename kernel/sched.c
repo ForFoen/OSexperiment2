@@ -19,7 +19,7 @@
 #include <asm/segment.h>
 
 #include <signal.h>
-
+#include <linux/tty.h>
 #define _S(nr) (1<<((nr)-1))
 #define _BLOCKABLE (~(_S(SIGKILL) | _S(SIGSTOP)))
 
@@ -306,7 +306,33 @@ void do_timer(long cpl)
 {
 	extern int beepcount;
 	extern void sysbeepstop(void);
-
+	user_timer *t=timer_head,*pre_t=NULL,*t1;
+	while(t){
+		t->jiffies--;
+		if(t->jiffies==0){
+			message *msg=(message*)malloc(sizeof(message));
+			msg->pid=-1;
+			msg->mid=MSG_TIME;
+			msg->next=NULL;
+			post_message(msg);
+			if(t->type==0){
+				t->jiffies=t->init_jiffies;
+				pre_t=t;
+				t=t->next;
+			}
+			else{
+				t1=t;
+				t=t->next;
+				if(pre_t) pre_t->next=t;
+				else timer_head=t;
+				free(t1);
+			}
+		}
+		else{
+			pre_t=t;
+			t=t->next;
+		}
+	}
 	if (beepcount)
 		if (!--beepcount)
 			sysbeepstop();

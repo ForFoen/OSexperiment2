@@ -61,7 +61,6 @@ extern struct tty_struct tty_table[];
 	eol2=\0
 */
 #define INIT_C_CC "\003\034\177\025\004\0\1\0\021\023\032\0\022\017\027\026\0"
-
 void rs_init(void);
 void con_init(void);
 void tty_init(void);
@@ -74,4 +73,38 @@ void con_write(struct tty_struct * tty);
 
 void copy_to_cooked(struct tty_struct * tty);
 
+//..........................................................
+#define MSG_MOUSE_CLICK 1
+#define MSG_TIME 2
+#define vga_graph_memstart 0xA0000
+#define vga_graph_memsize 64000
+#define cursor_side 6
+#define vga_width 320
+#define vga_height 200
+typedef struct MESS{
+	unsigned char mid; //消息的ID
+	int pid; //消息的目标进程ID，如果是当前进程，该值可设为-1
+	struct MESS *next; //形成消息队列要用的信息
+}message;
+
+typedef struct usertimer{
+	long jiffies;
+	int type; //类型为1表示只定义了1次闹钟，0表示定义了无数次闹钟 
+	long init_jiffies;
+	int pid; //哪个进程创建的定时器
+	struct usertimer *next;
+}user_timer;
+
+typedef struct OB{
+    unsigned char posx;//对象左上角的x坐标
+    unsigned char posy;//对象左上角的y坐标
+    unsigned char width;//对象的宽度
+    unsigned char height;//对象的高度
+	unsigned char color;//对象的颜色
+}object;
+
+extern void post_message(message *msg);
+extern message *message_head;
+extern message *message_tail;
+extern user_timer *timer_head;
 #endif

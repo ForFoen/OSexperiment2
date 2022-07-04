@@ -144,6 +144,10 @@
 #define __NR_lstat	84
 #define __NR_readlink	85
 #define __NR_uselib	86
+#define __NR_init_graphics 87
+#define __NR_get_message 88
+#define __NR_timer_create 89
+#define __NR_paint 90
 #define _syscall0(type,name) \
 type name(void) \
 { \

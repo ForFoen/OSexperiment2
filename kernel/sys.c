@@ -5,7 +5,7 @@
  */
 
 #include <errno.h>
-
+#include <asm/io.h>
 #include <linux/sched.h>
 #include <linux/tty.h>
 #include <linux/kernel.h>
@@ -289,4 +289,94 @@ int sys_umask(int mask)
 
 	current->umask = mask & 0777;
 	return (old);
+}
+
+static int is_set=0;
+int sys_init_graphics(int color)
+{
+	int i;
+	char *p=vga_graph_memstart;
+	if(!is_set){
+		outb(0x05,0x3CE);
+		outb(0x40,0x3CF);//设置256色，且取出方式为移动拼装
+		outb(0x06,0x3CE);
+		outb(0x05,0x3CF);//设置显存的地址区域，禁止字符模式
+		outb(0x04,0x3C4);
+		outb(0x08,0x3C5);//设定将四个显存片连在一起
+
+
+		outb(0x01,0x3D4);
+		outb(0x4F,0x3D5);//设置End Horizontal Display 为79
+		outb(0x03,0x3D4);
+		outb(0x82,0x3D5);//设置Display Enable Skew 为0
+
+		outb(0x07,0x3D4);
+		outb(0x1F,0x3D5);//设置Vertical Display End 第8、9位为1、0
+		outb(0x12,0x3D4);
+		outb(0x8F,0x3D5);//设置Vertical Display End 低7位为0x8F
+		outb(0x17,0x3D4);
+		outb(0xA3,0x3D5);//设置SLDIV=1，将Scanline clock除以2
+
+		outb(0x14,0x3D4);
+		outb(0x40,0x3D5);//设置DW=1
+		outb(0x13,0x3D4);
+		outb(0x28,0x3D5);//设置Offset=40
+
+		outb(0x0C,0x3D4);//设置Start Address高八位
+		outb(0x00,0x3D5);//
+		outb(0x0D,0x3D4);//设置Start Address低八位
+		outb(0x00,0x3D5);//将Start Address设置为0xA0000
+		is_set=1;
+	}
+	
+	for(i=0;i<vga_graph_memsize;i++) *p++=color;//将背景颜色设为蓝绿色
+	
+	return 0;
+}
+
+message *message_head=NULL;
+message *message_tail=NULL;
+int sys_get_message(unsigned char *msg)
+{
+	if(!message_head){ 
+		put_fs_byte(0,msg);
+		return 1;
+	}
+	message *m=message_head;
+	message_head=message_head->next;
+	put_fs_byte(m->mid,msg);
+	free(m);
+	return 1;
+}
+user_timer *timer_head=NULL;
+int sys_timer_create(long milliseconds,int type)
+{
+	long jiffies = milliseconds / 10;//Linux时钟是每个jiffies（滴答）（10毫秒）中断一次
+	user_timer *timer = (user_timer*)malloc(sizeof(user_timer));
+	timer->init_jiffies=jiffies;
+	timer->jiffies=jiffies;
+	timer->next=timer_head;
+	timer->type=type;
+	timer->pid=-1;
+	timer_head=timer;
+	return 1;
+}
+
+int sys_paint(unsigned char *ob){
+	int i,j,x,y,w,h,color;
+	x=get_fs_byte(ob);
+	y=get_fs_byte(ob+1);
+	w=get_fs_byte(ob+2);
+	h=get_fs_byte(ob+3);
+	color=get_fs_byte(ob+4);
+	w+=x;
+	h+=y;
+	char *p;
+	for(i=x;i<=w;i++){
+		for(j=y;j<=h;j++){
+			p=(char *)vga_graph_memstart+j*vga_width+i;
+			*p=color;
+		}
+	}
+	return 1;
 }
